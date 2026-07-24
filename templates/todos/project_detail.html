@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block content %}
+    <h1>{{ project.name }}</h1>
+    <p>{{ project.description }}</p>
+
+    <h2>Tasks</h2>
+    <ul class="task-list">
+        {% for task in project.tasks.all %}
+            <li class="{% if task.is_done %}done{% endif %}">
+                <span>{{ task.title }}{% if task.due_date %} (due {{ task.due_date }}){% endif %}</span>
+                <span>
+                    <a href="{% url 'todos:task-update' task.pk %}">edit</a>
+                    <a href="{% url 'todos:task-delete' task.pk %}">delete</a>
+                </span>
+            </li>
+        {% empty %}
+            <li>No tasks yet.</li>
+        {% endfor %}
+    </ul>
+    <p><a href="{% url 'todos:task-create' project.pk %}">+ New task</a></p>
+
+    <div class="actions">
+        <a href="{% url 'todos:project-update' project.pk %}">Edit project</a>
+        <a href="{% url 'todos:project-delete' project.pk %}">Delete project</a>
+        <a href="{% url 'todos:project-list' %}">Back to projects</a>
+    </div>
+{% endblock %}

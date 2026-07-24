@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+    <h1>Dashboard</h1>
+
+    <h2>Your projects</h2>
+    {% if projects %}
+        <ul>
+            {% for project in projects %}
+                <li><a href="{% url 'todos:project-detail' project.pk %}">{{ project.name }}</a></li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No projects yet.</p>
+    {% endif %}
+    <p><a href="{% url 'todos:project-create' %}">+ New project</a></p>
+
+    <h2>Upcoming tasks (next 5)</h2>
+    {% if upcoming_tasks %}
+        <ul class="task-list">
+            {% for task in upcoming_tasks %}
+                <li>
+                    <span>{{ task.title }} — {{ task.project.name }}</span>
+                    <span>{{ task.due_date|default:"no due date" }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Nothing due — you're all caught up.</p>
+    {% endif %}
+{% endblock %}

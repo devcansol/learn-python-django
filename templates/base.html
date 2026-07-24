@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Todo Learning App{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    <nav>
+        <a href="{% url 'todos:dashboard' %}">Todo App</a>
+        <div>
+            {% if user.is_authenticated %}
+                <span>Hi, {{ user.username }}</span>
+                <form action="{% url 'accounts:logout' %}" method="post" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit">Log out</button>
+                </form>
+            {% else %}
+                <a href="{% url 'accounts:login' %}">Log in</a>
+                <a href="{% url 'accounts:signup' %}">Sign up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</body>
+</html>

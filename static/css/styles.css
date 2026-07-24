@@ -1,0 +1,70 @@
+/* Minimal, deliberately plain styling — just enough that the template
+   structure (nav, forms, lists) reads clearly. Not the point of the lesson. */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: #1a1a1a;
+    line-height: 1.5;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+nav a {
+    margin-left: 1rem;
+}
+
+.messages {
+    list-style: none;
+    padding: 0;
+}
+
+.messages li {
+    background: #eef;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.errorlist {
+    color: #b00020;
+    padding-left: 1.2rem;
+}
+
+form p {
+    margin-bottom: 0.75rem;
+}
+
+.task-list {
+    list-style: none;
+    padding: 0;
+}
+
+.task-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+}
+
+.task-list li.done {
+    color: #888;
+    text-decoration: line-through;
+}
+
+.actions {
+    margin-top: 1.5rem;
+}
+
+.actions a {
+    margin-right: 1rem;
+}

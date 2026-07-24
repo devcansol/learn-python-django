@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Delete project{% endblock %}
+{% block content %}
+    <h1>Delete "{{ project.name }}"?</h1>
+    <p>This will also delete all of its tasks. This can't be undone.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Yes, delete it</button>
+        <a href="{% url 'todos:project-detail' project.pk %}">Cancel</a>
+    </form>
+{% endblock %}
