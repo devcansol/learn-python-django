@@ -5,15 +5,15 @@
 
     <h2>Your projects</h2>
     {% if projects %}
-        <ul>
+        <ul class="card-list">
             {% for project in projects %}
-                <li><a href="{% url 'todos:project-detail' project.pk %}">{{ project.name }}</a></li>
+                <li class="card"><a href="{% url 'todos:project-detail' project.pk %}">{{ project.name }}</a></li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>No projects yet.</p>
+        <p class="empty-state">No projects yet.</p>
     {% endif %}
-    <p><a href="{% url 'todos:project-create' %}">+ New project</a></p>
+    <p><a href="{% url 'todos:project-create' %}" class="btn btn-primary">+ New project</a></p>
 
     <h2>Upcoming tasks (next 5)</h2>
     {% if upcoming_tasks %}
@@ -26,6 +26,6 @@
             {% endfor %}
         </ul>
     {% else %}
-        <p>Nothing due — you're all caught up.</p>
+        <p class="empty-state">Nothing due — you're all caught up.</p>
     {% endif %}
 {% endblock %}

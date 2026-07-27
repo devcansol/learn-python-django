@@ -2,12 +2,12 @@
 {% block title %}Projects{% endblock %}
 {% block content %}
     <h1>Projects</h1>
-    <ul>
+    <ul class="card-list">
         {% for project in projects %}
-            <li><a href="{% url 'todos:project-detail' project.pk %}">{{ project.name }}</a></li>
+            <li class="card"><a href="{% url 'todos:project-detail' project.pk %}">{{ project.name }}</a></li>
         {% empty %}
-            <li>No projects yet.</li>
+            <li class="empty-state">No projects yet.</li>
         {% endfor %}
     </ul>
-    <p><a href="{% url 'todos:project-create' %}">+ New project</a></p>
+    <p><a href="{% url 'todos:project-create' %}" class="btn btn-primary">+ New project</a></p>
 {% endblock %}

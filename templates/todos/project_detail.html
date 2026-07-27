@@ -10,19 +10,19 @@
             <li class="{% if task.is_done %}done{% endif %}">
                 <span>{{ task.title }}{% if task.due_date %} (due {{ task.due_date }}){% endif %}</span>
                 <span>
-                    <a href="{% url 'todos:task-update' task.pk %}">edit</a>
-                    <a href="{% url 'todos:task-delete' task.pk %}">delete</a>
+                    <a href="{% url 'todos:task-update' task.pk %}" class="btn btn-sm btn-ghost">edit</a>
+                    <a href="{% url 'todos:task-delete' task.pk %}" class="btn btn-sm btn-danger">delete</a>
                 </span>
             </li>
         {% empty %}
-            <li>No tasks yet.</li>
+            <li class="empty-state">No tasks yet.</li>
         {% endfor %}
     </ul>
-    <p><a href="{% url 'todos:task-create' project.pk %}">+ New task</a></p>
+    <p><a href="{% url 'todos:task-create' project.pk %}" class="btn btn-primary">+ New task</a></p>
 
     <div class="actions">
-        <a href="{% url 'todos:project-update' project.pk %}">Edit project</a>
-        <a href="{% url 'todos:project-delete' project.pk %}">Delete project</a>
-        <a href="{% url 'todos:project-list' %}">Back to projects</a>
+        <a href="{% url 'todos:project-update' project.pk %}" class="btn btn-ghost">Edit project</a>
+        <a href="{% url 'todos:project-delete' project.pk %}" class="btn btn-danger">Delete project</a>
+        <a href="{% url 'todos:project-list' %}" class="btn btn-ghost">Back to projects</a>
     </div>
 {% endblock %}

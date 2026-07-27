@@ -131,6 +131,11 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'todos:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
+# Password reset emails print to the console instead of actually sending —
+# there's no real mail server in this learning project. Swap for
+# smtp.EmailBackend (or a provider like SES/SendGrid) in production.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 REST_FRAMEWORK = {
     # Every API view requires a logged-in user unless it says otherwise.
     'DEFAULT_PERMISSION_CLASSES': [

@@ -2,9 +2,11 @@
 {% block title %}Delete task{% endblock %}
 {% block content %}
     <h1>Delete "{{ task.title }}"?</h1>
-    <form method="post">
-        {% csrf_token %}
-        <button type="submit">Yes, delete it</button>
-        <a href="{% url 'todos:project-detail' task.project.pk %}">Cancel</a>
-    </form>
+    <div class="card card-danger">
+        <form method="post" class="actions">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, delete it</button>
+            <a href="{% url 'todos:project-detail' task.project.pk %}" class="btn btn-ghost">Cancel</a>
+        </form>
+    </div>
 {% endblock %}

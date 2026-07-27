@@ -33,10 +33,29 @@ This app doesn't gate anything itself, but it's the *destination* other apps' `l
 checks redirect to. See `config/settings.py`'s `LOGIN_URL = 'accounts:login'` and how
 `todos/views.py`'s dashboard uses `@login_required`.
 
+### Password reset — four built-in views, no custom logic
+`accounts/urls.py` wires up `PasswordResetView` -> `PasswordResetDoneView` ->
+`PasswordResetConfirmView` -> `PasswordResetCompleteView`. Django handles everything: generating
+a signed, single-use, time-limited token (`PASSWORD_RESET_TIMEOUT`, default 3 days), emailing it,
+validating it, and setting the new password. We only supply templates plus the email body/subject
+templates. One gotcha worth noting: `PasswordResetView`/`PasswordResetConfirmView` default
+`success_url` to *unnamespaced* view names (`reverse_lazy("password_reset_done")`), which 404s
+under our `app_name = "accounts"` — so `urls.py` passes `success_url=reverse_lazy("accounts:...")`
+explicitly via `.as_view()`, the same pattern already used for `template_name`.
+
+Since there's no real mail server here, `EMAIL_BACKEND` in `config/settings.py` is set to
+Django's console backend — reset emails print to the terminal running `runserver` instead of
+being sent anywhere.
+
 ## Try it
 
 1. Visit `/accounts/signup/` — create a user, note you land on the dashboard already logged in.
 2. Visit `/accounts/logout/` then hit the dashboard URL directly — you're bounced to
    `/accounts/login/?next=/...`.
-3. `python manage.py test accounts` — covers the signup happy path, a validation failure
-   (mismatched passwords), and the anonymous-redirect behavior.
+3. Visit `/accounts/login/`, click "Forgot your password?", and submit the email you signed up
+   with. Check the terminal running `runserver` — the reset email (with a clickable link) prints
+   there via the console `EMAIL_BACKEND`. Open the link to set a new password.
+4. `python manage.py test accounts` — covers the signup happy path, a validation failure
+   (mismatched passwords), the anonymous-redirect behavior, and the password reset flow (email
+   sent, unknown-email is indistinguishable from known, valid token succeeds, invalid token is
+   rejected).

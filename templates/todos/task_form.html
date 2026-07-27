@@ -2,14 +2,16 @@
 {% block title %}{% if form.instance.pk %}Edit task{% else %}New task{% endif %}{% endblock %}
 {% block content %}
     <h1>{% if form.instance.pk %}Edit task{% else %}New task{% endif %}</h1>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Save</button>
-    </form>
+    <div class="card form-card">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
     {% if project %}
-        <p><a href="{% url 'todos:project-detail' project.pk %}">Back to {{ project.name }}</a></p>
+        <p><a href="{% url 'todos:project-detail' project.pk %}" class="btn btn-ghost">Back to {{ project.name }}</a></p>
     {% elif form.instance.project %}
-        <p><a href="{% url 'todos:project-detail' form.instance.project.pk %}">Back to {{ form.instance.project.name }}</a></p>
+        <p><a href="{% url 'todos:project-detail' form.instance.project.pk %}" class="btn btn-ghost">Back to {{ form.instance.project.name }}</a></p>
     {% endif %}
 {% endblock %}
