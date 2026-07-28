@@ -1,8 +1,8 @@
 """OpenRouter client for the "Generate with AI" description helper.
 
-Deliberately minimal: a single pinned model (see settings.OPENROUTER_MODEL),
-no streaming, no fallback chain — the model is small and fast enough that a
-plain synchronous request/response round-trip is fine for a short textarea.
+Deliberately minimal: no streaming, just a synchronous request/response
+round-trip. Tries settings.OPENROUTER_MODEL first, then falls through
+settings.OPENROUTER_FALLBACK_MODELS in order if a model is rate-limited.
 """
 import requests
 from django.conf import settings
@@ -40,28 +40,36 @@ def generate_description(subject, hint='', parent_context=''):
         {'role': 'user', 'content': '\n'.join(instructions)},
     ]
 
-    try:
-        response = requests.post(
-            OPENROUTER_URL,
-            headers={
-                'Authorization': f'Bearer {settings.OPENROUTER_API_KEY}',
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost:8000',
-                'X-Title': 'Todo Learning App',
-            },
-            json={
-                'model': settings.OPENROUTER_MODEL,
-                'messages': messages,
-            },
-            timeout=REQUEST_TIMEOUT,
-        )
-    except requests.exceptions.Timeout:
-        raise AIServiceError('The AI service timed out. Please try again.')
-    except requests.exceptions.RequestException:
-        raise AIServiceError('Could not reach the AI service. Please try again.')
+    models = [settings.OPENROUTER_MODEL, *getattr(settings, 'OPENROUTER_FALLBACK_MODELS', [])]
+
+    response = None
+    for model in models:
+        try:
+            response = requests.post(
+                OPENROUTER_URL,
+                headers={
+                    'Authorization': f'Bearer {settings.OPENROUTER_API_KEY}',
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'http://localhost:8000',
+                    'X-Title': 'Todo Learning App',
+                },
+                json={
+                    'model': model,
+                    'messages': messages,
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
+        except requests.exceptions.Timeout:
+            raise AIServiceError('The AI service timed out. Please try again.')
+        except requests.exceptions.RequestException:
+            raise AIServiceError('Could not reach the AI service. Please try again.')
+
+        if response.status_code == 429 and model != models[-1]:
+            continue
+        break
 
     if response.status_code == 429:
-        raise AIServiceError('The free AI model is rate-limited right now. Please try again shortly.')
+        raise AIServiceError('The AI models are rate-limited right now. Please try again shortly.')
     if not response.ok:
         raise AIServiceError('The AI service returned an error. Please try again.')
 
