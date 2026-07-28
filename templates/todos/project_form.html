@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{% if form.instance.pk %}Edit project{% else %}New project{% endif %}{% endblock %}
 {% block content %}
     <h1>{% if form.instance.pk %}Edit project{% else %}New project{% endif %}</h1>
@@ -6,7 +7,21 @@
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
+            <p>
+                <label for="id_ai_hint">AI hint (optional)</label>
+                <input type="text" id="id_ai_hint" placeholder="e.g. audience, goal, tone">
+            </p>
+            <button type="button"
+                    class="btn btn-ghost"
+                    data-ai-generate
+                    data-kind="project"
+                    data-subject-field="id_name"
+                    data-description-field="id_description"
+                    data-hint-field="id_ai_hint">✨ Generate with AI</button>
             <button type="submit" class="btn btn-primary">Save</button>
         </form>
     </div>
+{% endblock %}
+{% block extra_js %}
+    <script src="{% static 'js/ai_assist.js' %}"></script>
 {% endblock %}

@@ -26,3 +26,13 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = Project
         fields = ['id', 'owner', 'name', 'description', 'created_at', 'tasks']
         read_only_fields = ['owner']
+
+
+class GenerateDescriptionSerializer(serializers.Serializer):
+    """Input for the "Generate with AI" description helper — not tied to a
+    model, just validates what todos/ai.py needs."""
+
+    kind = serializers.ChoiceField(choices=['project', 'task'])
+    subject = serializers.CharField(max_length=200)
+    hint = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    parent_context = serializers.CharField(max_length=200, required=False, allow_blank=True)

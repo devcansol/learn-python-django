@@ -10,10 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -135,6 +140,11 @@ LOGOUT_REDIRECT_URL = 'accounts:login'
 # there's no real mail server in this learning project. Swap for
 # smtp.EmailBackend (or a provider like SES/SendGrid) in production.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# OpenRouter powers the "Generate with AI" description helper (see todos/ai.py).
+# Pinned to the free model the user chose — no fallback chain, no other models.
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+OPENROUTER_MODEL = 'inclusionai/ling-3.0-flash:free'
 
 REST_FRAMEWORK = {
     # Every API view requires a logged-in user unless it says otherwise.

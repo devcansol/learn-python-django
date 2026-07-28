@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}{% if form.instance.pk %}Edit task{% else %}New task{% endif %}{% endblock %}
 {% block content %}
     <h1>{% if form.instance.pk %}Edit task{% else %}New task{% endif %}</h1>
@@ -6,6 +7,18 @@
         <form method="post">
             {% csrf_token %}
             {{ form.as_p }}
+            <p>
+                <label for="id_ai_hint">AI hint (optional)</label>
+                <input type="text" id="id_ai_hint" placeholder="e.g. audience, goal, tone">
+            </p>
+            <button type="button"
+                    class="btn btn-ghost"
+                    data-ai-generate
+                    data-kind="task"
+                    data-subject-field="id_title"
+                    data-description-field="id_description"
+                    data-hint-field="id_ai_hint"
+                    data-parent-context="{{ project.name|default:form.instance.project.name }}">✨ Generate with AI</button>
             <button type="submit" class="btn btn-primary">Save</button>
         </form>
     </div>
@@ -14,4 +27,7 @@
     {% elif form.instance.project %}
         <p><a href="{% url 'todos:project-detail' form.instance.project.pk %}" class="btn btn-ghost">Back to {{ form.instance.project.name }}</a></p>
     {% endif %}
+{% endblock %}
+{% block extra_js %}
+    <script src="{% static 'js/ai_assist.js' %}"></script>
 {% endblock %}
