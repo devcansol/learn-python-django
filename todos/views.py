@@ -21,6 +21,15 @@ def dashboard(request):
         .select_related('project')
         .order_by('due_date')[:5]
     )
+
+    # These print() calls show up in the terminal running `manage.py runserver`,
+    # not in the browser — this code runs on the server, before any HTML is
+    # sent back. Compare with the console.log() calls in dashboard.html, which
+    # run on the student's machine once the page arrives.
+    print(f'[server console] dashboard view: request from {request.user}')
+    print(f'[server console] dashboard view: {projects.count()} project(s) loaded')
+    print(f'[server console] dashboard view: {len(upcoming_tasks)} upcoming task(s) loaded')
+
     return render(request, 'todos/dashboard.html', {
         'projects': projects,
         'upcoming_tasks': upcoming_tasks,
