@@ -29,3 +29,16 @@
         <p class="empty-state">Nothing due — you're all caught up.</p>
     {% endif %}
 {% endblock %}
+
+{% block extra_js %}
+    <script>
+        // These console.log() calls show up in the browser's DevTools console
+        // (F12, or right-click > Inspect > Console) — they run on the
+        // student's machine, after the server has already sent the page.
+        // Compare with the print() calls in todos/views.py's dashboard view,
+        // which run on the server and show up in the runserver terminal.
+        console.log('[browser console] dashboard page loaded');
+        console.log('[browser console] projects rendered:', {{ projects.count }});
+        console.log('[browser console] upcoming tasks rendered:', {{ upcoming_tasks|length }});
+    </script>
+{% endblock %}
