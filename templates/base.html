@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}TaskFlow{% endblock %}</title>
+    <title>{% block title %}My TaskFlow{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 <body>
     <nav class="site-header">
         <a class="brand" href="{% url 'todos:dashboard' %}">
             <span class="brand-icon">✓</span>
-            <span class="brand-text">TaskFlow</span>
+            <span class="brand-text">My TaskFlow</span>
         </a>
         <div class="nav-actions">
             {% if user.is_authenticated %}
