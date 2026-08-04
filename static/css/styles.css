@@ -1,5 +1,3 @@
-/* Playful, pastel light theme. */
-
 :root {
     --color-bg: #fff8f0;
     --color-surface: #ffffff;
@@ -80,10 +78,29 @@ a {
 }
 
 .site-header .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     color: #fff;
     font-weight: 700;
     font-size: 1.25rem;
     text-decoration: none;
+}
+
+.brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.22);
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.brand-text {
+    letter-spacing: 0.01em;
 }
 
 .nav-actions {
@@ -104,6 +121,11 @@ a {
 
 .nav-actions a:hover {
     text-decoration: underline;
+}
+
+.nav-greeting {
+    font-weight: 500;
+    opacity: 0.9;
 }
 
 /* Messages */

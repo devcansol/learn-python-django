@@ -4,15 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Todo Learning App{% endblock %}</title>
+    <title>{% block title %}TaskFlow{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 <body>
     <nav class="site-header">
-        <a class="brand" href="{% url 'todos:dashboard' %}">Todo App</a>
+        <a class="brand" href="{% url 'todos:dashboard' %}">
+            <span class="brand-icon">✓</span>
+            <span class="brand-text">TaskFlow</span>
+        </a>
         <div class="nav-actions">
             {% if user.is_authenticated %}
-                <span>Hi, {{ user.username }}</span>
+                <span class="nav-greeting">Hi, {{ user.username }}</span>
                 <form action="{% url 'accounts:logout' %}" method="post" style="display:inline">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-ghost btn-sm">Log out</button>
