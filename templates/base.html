@@ -36,6 +36,11 @@
         {% block content %}{% endblock %}
     </main>
 
+    {% if user.is_authenticated %}
+        {% include "todos/_chat_widget.html" %}
+        <script src="{% static 'js/chat_widget.js' %}"></script>
+    {% endif %}
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

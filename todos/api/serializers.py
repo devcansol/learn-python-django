@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from todos.models import Project, Task
+from todos.models import ChatMessage, Project, Task
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -36,3 +36,16 @@ class GenerateDescriptionSerializer(serializers.Serializer):
     subject = serializers.CharField(max_length=200)
     hint = serializers.CharField(max_length=300, required=False, allow_blank=True)
     parent_context = serializers.CharField(max_length=200, required=False, allow_blank=True)
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'role', 'content', 'created_at']
+
+
+class ChatSendSerializer(serializers.Serializer):
+    """Input for posting a new chat message — not tied to a model, just
+    validates what todos/ai.py's answer_question needs."""
+
+    message = serializers.CharField(max_length=2000)

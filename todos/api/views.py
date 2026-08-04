@@ -2,10 +2,33 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from todos.ai import AIServiceError, generate_description
-from todos.models import Project, Task
+from todos.ai import AIServiceError, answer_question, generate_description
+from todos.models import ChatMessage, Project, Task
 
-from .serializers import GenerateDescriptionSerializer, ProjectSerializer, TaskSerializer
+from .serializers import (
+    ChatMessageSerializer,
+    ChatSendSerializer,
+    GenerateDescriptionSerializer,
+    ProjectSerializer,
+    TaskSerializer,
+)
+
+HISTORY_LIMIT = 20   # messages of model context per request, not a display cap
+DISPLAY_LIMIT = 200  # oldest-first cap on what GET returns, so the transcript can't grow unbounded
+
+
+def _build_task_context(user):
+    projects = Project.objects.filter(owner=user).prefetch_related('tasks')
+    if not projects:
+        return 'The user has no projects or tasks yet.'
+    lines = []
+    for project in projects:
+        lines.append(f'Project: {project.name}' + (f' — {project.description}' if project.description else ''))
+        for task in project.tasks.all():
+            status = 'done' if task.is_done else 'open'
+            due = f', due {task.due_date}' if task.due_date else ''
+            lines.append(f'  - [{status}] {task.title}{due}')
+    return '\n'.join(lines)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -48,3 +71,29 @@ class GenerateDescriptionView(APIView):
             return Response({'error': str(exc)}, status=status_code)
 
         return Response({'description': description})
+
+
+class ChatView(APIView):
+    """Backs the floating chat widget — history persisted per-user in
+    ChatMessage, answers grounded in the user's own Project/Task data."""
+
+    def get(self, request):
+        messages = list(ChatMessage.objects.filter(owner=request.user).order_by('-created_at')[:DISPLAY_LIMIT])[::-1]
+        return Response(ChatMessageSerializer(messages, many=True).data)
+
+    def post(self, request):
+        serializer = ChatSendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        text = serializer.validated_data['message']
+
+        history = list(ChatMessage.objects.filter(owner=request.user).order_by('-created_at')[:HISTORY_LIMIT])[::-1]
+        ChatMessage.objects.create(owner=request.user, role='user', content=text)
+
+        try:
+            reply = answer_question(text, history=history, context=_build_task_context(request.user))
+        except AIServiceError as exc:
+            status_code = 429 if 'rate-limited' in str(exc) else 502
+            return Response({'error': str(exc)}, status=status_code)
+
+        assistant_message = ChatMessage.objects.create(owner=request.user, role='assistant', content=reply)
+        return Response(ChatMessageSerializer(assistant_message).data, status=201)

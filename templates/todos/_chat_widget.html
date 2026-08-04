@@ -1,0 +1,16 @@
+{% load static %}
+<div id="chat-widget">
+    {% csrf_token %}
+    <button id="chat-toggle" type="button" aria-label="Ask AI">💬</button>
+    <div id="chat-panel" hidden>
+        <div id="chat-panel-header">
+            <span>Ask AI about your projects</span>
+            <button id="chat-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <div id="chat-messages"></div>
+        <form id="chat-form">
+            <input id="chat-input" type="text" placeholder="Ask a question…" autocomplete="off">
+            <button type="submit" class="btn btn-primary btn-sm">Send</button>
+        </form>
+    </div>
+</div>

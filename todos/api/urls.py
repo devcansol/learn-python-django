@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import GenerateDescriptionView, ProjectViewSet, TaskViewSet
+from .views import ChatView, GenerateDescriptionView, ProjectViewSet, TaskViewSet
 
 # DefaultRouter inspects each ViewSet's actions and generates the matching
 # URL patterns (list/detail/etc.) plus a browsable API root — the DRF
@@ -12,4 +12,5 @@ router.register('tasks', TaskViewSet, basename='task')
 
 urlpatterns = router.urls + [
     path('ai/generate-description/', GenerateDescriptionView.as_view(), name='generate-description'),
+    path('ai/chat/', ChatView.as_view(), name='ai-chat'),
 ]
