@@ -1,5 +1,3 @@
-// Powers the "Generate with AI" button on the project/task forms. Plain
-// vanilla JS on purpose — this project has no build step or JS framework.
 (function () {
   function csrfToken() {
     var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
