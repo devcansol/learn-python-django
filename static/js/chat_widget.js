@@ -30,6 +30,25 @@
     return bubble;
   }
 
+  function appendError(message, retryText) {
+    var bubble = document.createElement('div');
+    bubble.className = 'chat-msg chat-msg-error';
+    var span = document.createElement('span');
+    span.textContent = message;
+    bubble.appendChild(span);
+    var retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'btn btn-ghost btn-sm chat-retry';
+    retry.textContent = 'Retry';
+    retry.addEventListener('click', function () {
+      bubble.remove();
+      sendMessage(retryText);
+    });
+    bubble.appendChild(retry);
+    messagesEl.appendChild(bubble);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
   async function loadHistory() {
     try {
       var response = await fetch('/api/ai/chat/');
@@ -58,16 +77,12 @@
     panel.hidden = true;
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    var text = input.value.trim();
-    if (!text) {
-      return;
-    }
-
+  async function sendMessage(text) {
     appendMessage('user', text);
-    input.value = '';
     input.disabled = true;
+    var assistantBubble = appendMessage('assistant', 'Thinking…');
+    assistantBubble.classList.add('chat-msg-pending');
+    var receivedFirstChunk = false;
 
     try {
       var response = await fetch('/api/ai/chat/', {
@@ -79,19 +94,60 @@
         body: JSON.stringify({ message: text }),
       });
 
-      var data = await response.json();
       if (!response.ok) {
-        appendMessage('error', data.error || 'Something went wrong. Please try again.');
+        assistantBubble.remove();
+        var data = await response.json().catch(function () { return {}; });
+        appendError(data.error || 'Something went wrong. Please try again.', text);
         return;
       }
 
-      appendMessage('assistant', data.content);
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      while (true) {
+        var result = await reader.read();
+        if (result.done) {
+          break;
+        }
+        var chunk = decoder.decode(result.value, { stream: true });
+        if (!chunk) {
+          continue;
+        }
+        if (!receivedFirstChunk) {
+          assistantBubble.textContent = '';
+          assistantBubble.classList.remove('chat-msg-pending');
+          receivedFirstChunk = true;
+        }
+        assistantBubble.textContent += chunk;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+      if (!receivedFirstChunk) {
+        // Stream ended with no content at all (e.g. an empty upstream reply).
+        assistantBubble.remove();
+        appendError('The AI did not return a reply. Please try again.', text);
+      }
     } catch (err) {
-      appendMessage('error', 'Could not reach the AI service. Please try again.');
+      if (receivedFirstChunk) {
+        // Keep whatever text already streamed in rather than discarding it —
+        // only the connection dropped, the partial reply is still real.
+        assistantBubble.classList.remove('chat-msg-pending');
+      } else {
+        assistantBubble.remove();
+      }
+      appendError('Could not reach the AI service. Please try again.', text);
     } finally {
       input.disabled = false;
       input.focus();
     }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    var text = input.value.trim();
+    if (!text) {
+      return;
+    }
+    input.value = '';
+    sendMessage(text);
   }
 
   toggleButton.addEventListener('click', function () {

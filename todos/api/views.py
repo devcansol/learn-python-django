@@ -1,8 +1,9 @@
+from django.http import StreamingHttpResponse
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from todos.ai import AIServiceError, answer_question, generate_description
+from todos.ai import AIServiceError, generate_description, stream_answer
 from todos.models import ChatMessage, Project, Task
 
 from .serializers import (
@@ -90,10 +91,17 @@ class ChatView(APIView):
         ChatMessage.objects.create(owner=request.user, role='user', content=text)
 
         try:
-            reply = answer_question(text, history=history, context=_build_task_context(request.user))
+            chunks = stream_answer(text, history=history, context=_build_task_context(request.user))
         except AIServiceError as exc:
             status_code = 429 if 'rate-limited' in str(exc) else 502
             return Response({'error': str(exc)}, status=status_code)
 
-        assistant_message = ChatMessage.objects.create(owner=request.user, role='assistant', content=reply)
-        return Response(ChatMessageSerializer(assistant_message).data, status=201)
+        def body():
+            collected = []
+            for chunk in chunks:
+                collected.append(chunk)
+                yield chunk.encode('utf-8')
+            if collected:
+                ChatMessage.objects.create(owner=request.user, role='assistant', content=''.join(collected))
+
+        return StreamingHttpResponse(body(), content_type='text/plain; charset=utf-8')

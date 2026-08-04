@@ -42,7 +42,7 @@ class Task(models.Model):
 
 
 class ChatMessage(models.Model):
-    """One turn in a user's AI chat history — see todos/ai.py:answer_question."""
+    """One turn in a user's AI chat history — see todos/ai.py:stream_answer."""
 
     ROLE_CHOICES = [('user', 'User'), ('assistant', 'Assistant')]
 
