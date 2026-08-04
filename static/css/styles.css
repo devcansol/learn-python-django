@@ -464,6 +464,16 @@ form input[type="checkbox"] {
     color: var(--color-error-text);
 }
 
+.chat-msg-pending {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.chat-msg-error .chat-retry {
+    margin-top: 0.35rem;
+    display: block;
+}
+
 #chat-form {
     display: flex;
     gap: 0.5rem;

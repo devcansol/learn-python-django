@@ -46,6 +46,6 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
 class ChatSendSerializer(serializers.Serializer):
     """Input for posting a new chat message — not tied to a model, just
-    validates what todos/ai.py's answer_question needs."""
+    validates what todos/ai.py's stream_answer needs."""
 
     message = serializers.CharField(max_length=2000)
