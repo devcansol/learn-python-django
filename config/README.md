@@ -1,44 +1,66 @@
-# `config/` — the Django project
+# learn-python-django
 
-**Start here.** This is the "project" in Django's project/app split: it holds settings and the
-root URL router, but no models or views of its own. Everything domain-specific lives in the
-`accounts/` and `todos/` **apps** next to it.
+A public repo to learn Python &amp; Django — core concepts, implementation and realtime use
+cases — built as a working task/project manager. Every app in this repo demonstrates a
+cluster of Django concepts and documents them in its own README, so you can read the code and
+the "why" side by side.
 
-## Concepts demonstrated
+## What's here
 
-### Project vs. app
-A Django **project** is the whole site — one settings file, one root URLconf. An **app** is a
-self-contained bundle of models/views/templates for one piece of functionality (`accounts`,
-`todos`). A project can contain many apps, and a well-designed app can be dropped into a
-different project. This repo's project is called `config` (some tutorials call it after the
-site's name, e.g. `mysite`) to keep that distinction visible in the folder name.
+A small multi-user task manager:
+- Sign up, log in, log out (`accounts/`)
+- Create projects, add tasks to them, mark tasks done (`todos/`)
+- The same data, available as a JSON REST API (`todos/api/`)
+- Everything editable from the Django admin
 
-### `settings.py`
-Central configuration, read once at process start:
-- `INSTALLED_APPS` — every app (ours and Django's built-ins) must be listed here before its
-  models, template tags, or admin registrations are picked up.
-- `MIDDLEWARE` — a pipeline every request/response passes through (sessions, auth, CSRF, ...).
-- `DATABASES` — SQLite here, zero setup required. Swap the `ENGINE`/credentials to point at
-  Postgres/MySQL without touching any app code.
-- `TEMPLATES['DIRS']` — points at the project-level `templates/` folder so apps can share a
-  `base.html` rather than each duplicating page chrome.
-- `LOGIN_URL` / `LOGIN_REDIRECT_URL` — read by `@login_required` and `LoginRequiredMixin`
-  (used throughout `todos/views.py`) to know where to send anonymous users and where to send
-  them after they log in.
-- `REST_FRAMEWORK` — global defaults for the API in `todos/api/`.
+Each user only ever sees their own projects and tasks.
 
-### `urls.py` (root URLconf)
-Django resolves an incoming path by walking `urlpatterns` top to bottom. Rather than listing
-every page here, the root file `include()`s each app's own `urls.py` — the project says "any
-path under `/accounts/` belongs to the accounts app" and stops looking further once it hands
-off. This keeps routing decisions next to the views that implement them.
+## Setup
 
-### `wsgi.py` / `asgi.py`
-Entry points a production server (gunicorn, uvicorn, etc.) uses to talk to the Django
-application. `manage.py runserver` uses neither directly — it has its own lightweight dev
-server — but production deployments point at one of these.
+Requires Python 3.10+.
 
-## Where to go next
+```bash
+python3 -m venv venv
+source venv/bin/activate        # venv\Scripts\activate on Windows
+pip install -r requirements.txt
 
-Read `accounts/README.md`, then `todos/README.md`, then `todos/api/README.md` — see the root
-`README.md`'s "Learning path" section for the suggested order.
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
+
+Then visit:
+- `http://127.0.0.1:8000/` — the app (sign up, or log in if you already have an account)
+- `http://127.0.0.1:8000/admin/` — the Django admin (log in with the superuser you just created)
+- `http://127.0.0.1:8000/api/` — the browsable REST API (log in first at `/accounts/login/`)
+
+Run the test suite with:
+
+```bash
+python manage.py test
+```
+
+## Learning path
+
+Read in this order — each README builds on concepts from the ones before it:
+
+1. **[`config/README.md`](config/README.md)** — the Django project itself: settings,
+   `INSTALLED_APPS`, the root URLconf, and the project/app split.
+2. **[`accounts/README.md`](accounts/README.md)** — Django's built-in auth system: the `User`
+   model, built-in login/logout views, `UserCreationForm`, and `login_required`.
+3. **[`todos/README.md`](todos/README.md)** — the core domain: models & migrations,
+   function-based vs. class-based views, `ModelForm`, signals, authorization mixins, and admin
+   customization.
+4. **[`todos/api/README.md`](todos/api/README.md)** — the same domain exposed as a REST API
+   with Django REST Framework: serializers, viewsets, routers, and permissions.
+
+## Project layout
+
+```
+config/       Django project: settings, root URLs
+accounts/     Auth: signup/login/logout
+todos/        Core domain: Project & Task models, views, forms, admin, signals
+todos/api/    REST API for the same models (Django REST Framework)
+templates/    Shared HTML templates (base layout, auth pages, todos pages)
+static/       CSS
+```
