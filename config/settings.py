@@ -148,8 +148,9 @@ LOGOUT_REDIRECT_URL = 'accounts:login'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # OpenRouter powers the "Generate with AI" description helper (see todos/ai.py).
-# OPENROUTER_MODEL is tried first; if it's rate-limited, ai.py falls back to
-# each model in OPENROUTER_FALLBACK_MODELS in order.
+# OPENROUTER_MODEL is tried first; if it's rate-limited (429) or no longer
+# available (404 — OpenRouter's free-tier catalog rotates), ai.py falls back
+# to each model in OPENROUTER_FALLBACK_MODELS in order.
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 OPENROUTER_MODEL = 'inclusionai/ling-3.0-flash:free'
 OPENROUTER_FALLBACK_MODELS = ['google/gemini-3.5-flash-lite']

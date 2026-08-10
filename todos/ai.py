@@ -22,6 +22,10 @@ REQUEST_TIMEOUT = 20
 MAX_ATTEMPTS = 3               # per model, on a 5xx
 BACKOFF_SECONDS = 0.5          # doubles each retry: 0.5s, 1s
 RETRYABLE_STATUS = frozenset({500, 502, 503, 504})
+# Falls through to the next model in OPENROUTER_FALLBACK_MODELS on either:
+# rate-limited (429), or the model slug itself is gone/deprecated (404) —
+# OpenRouter's free-tier catalog rotates models out from under us.
+FALLBACK_TRIGGER_STATUS = frozenset({404, 429})
 
 
 class AIServiceError(Exception):
@@ -103,7 +107,7 @@ def _chat_completion(messages):
     response = None
     for model in models:
         response = _post_with_retries(model, messages, stream=False)
-        if response.status_code == 429 and model != models[-1]:
+        if response.status_code in FALLBACK_TRIGGER_STATUS and model != models[-1]:
             continue
         break
 
@@ -138,7 +142,7 @@ def _stream_chat_completion(messages):
     response = None
     for model in models:
         response = _post_with_retries(model, messages, stream=True)
-        if response.status_code == 429 and model != models[-1]:
+        if response.status_code in FALLBACK_TRIGGER_STATUS and model != models[-1]:
             response.close()  # stream=True leaves the connection open until read or closed
             continue
         break
