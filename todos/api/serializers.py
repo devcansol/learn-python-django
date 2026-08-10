@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from todos.models import ChatMessage, Project, Task
+from todos.models import ChatMessage, Document, Project, Task
+from todos.rag import ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -49,3 +50,26 @@ class ChatSendSerializer(serializers.Serializer):
     validates what todos/ai.py's stream_answer needs."""
 
     message = serializers.CharField(max_length=2000)
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    """Upload/list a Document for the chat widget's RAG knowledge base —
+    see todos/rag.py:index_document. `file` is write-only: the uploaded
+    file is never echoed back or exposed by URL (see todos/rag.py's
+    module docstring for why)."""
+
+    file = serializers.FileField(write_only=True)
+    title = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    class Meta:
+        model = Document
+        fields = ['id', 'title', 'file', 'file_type', 'status', 'char_count', 'chunk_count', 'error_message', 'created_at']
+        read_only_fields = ['file_type', 'status', 'char_count', 'chunk_count', 'error_message', 'created_at']
+
+    def validate_file(self, value):
+        extension = value.name.rsplit('.', 1)[-1].lower() if '.' in value.name else ''
+        if extension not in ALLOWED_EXTENSIONS:
+            raise serializers.ValidationError('Only .txt, .md, and .pdf files are supported.')
+        if value.size > MAX_UPLOAD_SIZE:
+            raise serializers.ValidationError(f'File is too large — max {MAX_UPLOAD_SIZE // (1024 * 1024)}MB.')
+        return value

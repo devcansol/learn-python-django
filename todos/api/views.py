@@ -4,11 +4,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from todos.ai import AIServiceError, generate_description, stream_answer
-from todos.models import ChatMessage, Project, Task
+from todos.models import ChatMessage, Document, Project, Task
+from todos.rag import build_retrieved_context, index_document, retrieve_relevant_chunks
 
 from .serializers import (
     ChatMessageSerializer,
     ChatSendSerializer,
+    DocumentSerializer,
     GenerateDescriptionSerializer,
     ProjectSerializer,
     TaskSerializer,
@@ -53,6 +55,35 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Task.objects.filter(project__owner=self.request.user)
 
 
+class DocumentViewSet(viewsets.ModelViewSet):
+    """Upload/list/delete the user's personal RAG knowledge-base documents.
+    Indexing (extract -> chunk -> embed -> store, see todos/rag.py)
+    happens synchronously inside perform_create — this app has no
+    background job queue, so the response already reflects the final
+    status. No PATCH/PUT: editing a document's file would mean
+    re-indexing, out of scope for v1 (delete and re-upload instead)."""
+
+    serializer_class = DocumentSerializer
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        return Document.objects.filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        uploaded_file = serializer.validated_data['file']
+        file_type = uploaded_file.name.rsplit('.', 1)[-1].lower()
+        title = serializer.validated_data.get('title') or uploaded_file.name
+        document = serializer.save(owner=self.request.user, title=title, file_type=file_type, status='pending')
+        index_document(document)  # mutates `document` in place — status/counts are already correct by the time serializer.data is read for the response
+
+    def perform_destroy(self, instance):
+        # Model .delete() does not remove the file on disk by default —
+        # FieldFile cleanup is manual. Chunks cascade via DocumentChunk's
+        # on_delete=CASCADE.
+        instance.file.delete(save=False)
+        instance.delete()
+
+
 class GenerateDescriptionView(APIView):
     """Backs the "Generate with AI" button on the project/task forms —
     keeps the OpenRouter API key server-side (see todos/ai.py)."""
@@ -91,7 +122,20 @@ class ChatView(APIView):
         ChatMessage.objects.create(owner=request.user, role='user', content=text)
 
         try:
-            chunks = stream_answer(text, history=history, context=_build_task_context(request.user))
+            retrieved_context = build_retrieved_context(retrieve_relevant_chunks(request.user, text))
+        except AIServiceError:
+            # Retrieval is additive: if embedding the query fails (rate
+            # limit, transient network error), still answer from task
+            # data alone rather than failing the whole chat turn.
+            retrieved_context = ''
+
+        try:
+            chunks = stream_answer(
+                text,
+                history=history,
+                context=_build_task_context(request.user),
+                retrieved_context=retrieved_context,
+            )
         except AIServiceError as exc:
             status_code = 429 if 'rate-limited' in str(exc) else 502
             return Response({'error': str(exc)}, status=status_code)

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ChatMessage, Project, Task
+from .models import ChatMessage, Document, DocumentChunk, Project, Task
 
 
 class TaskInline(admin.TabularInline):
@@ -30,3 +30,23 @@ class TaskAdmin(admin.ModelAdmin):
 class ChatMessageAdmin(admin.ModelAdmin):
     list_display = ['owner', 'role', 'created_at']
     list_filter = ['role', 'owner']
+
+
+class DocumentChunkInline(admin.TabularInline):
+    """Browse a document's chunks from its own admin page, mirroring
+    TaskInline on ProjectAdmin. Excludes `embedding` — a 1536-float list
+    is unreadable in a list view."""
+    model = DocumentChunk
+    extra = 0
+    fields = ['chunk_index', 'text']
+    readonly_fields = ['chunk_index', 'text']
+    can_delete = False
+
+
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ['title', 'owner', 'file_type', 'status', 'chunk_count', 'created_at']
+    list_filter = ['status', 'file_type', 'owner']
+    search_fields = ['title']
+    readonly_fields = ['status', 'char_count', 'chunk_count', 'error_message', 'created_at']
+    inlines = [DocumentChunkInline]

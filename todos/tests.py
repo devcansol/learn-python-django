@@ -1,8 +1,12 @@
+import shutil
+import tempfile
+
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import Project, Task
+from .models import Document, DocumentChunk, Project, Task
 
 
 class ProjectTaskModelTests(TestCase):
@@ -32,6 +36,42 @@ class ProjectTaskModelTests(TestCase):
         task.save()
         task.refresh_from_db()
         self.assertIsNone(task.completed_at)
+
+
+class DocumentModelTests(TestCase):
+    """Uses a throwaway MEDIA_ROOT so uploaded test files land in a temp
+    dir instead of the real media/ folder."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._media_root = tempfile.mkdtemp()
+        cls._media_override = override_settings(MEDIA_ROOT=cls._media_root)
+        cls._media_override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._media_override.disable()
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.owner = User.objects.create_user('owner', password='pw12345678')
+        self.document = Document.objects.create(
+            owner=self.owner,
+            title='notes.txt',
+            file=SimpleUploadedFile('notes.txt', b'hello world'),
+            file_type='txt',
+            status='completed',
+        )
+
+    def test_str_returns_title(self):
+        self.assertEqual(str(self.document), 'notes.txt')
+
+    def test_deleting_document_cascades_chunks(self):
+        DocumentChunk.objects.create(document=self.document, chunk_index=0, text='hello world', embedding=[0.1, 0.2])
+        self.document.delete()
+        self.assertEqual(DocumentChunk.objects.count(), 0)
 
 
 class ProjectViewOwnershipTests(TestCase):

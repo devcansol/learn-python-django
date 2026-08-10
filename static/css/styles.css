@@ -428,6 +428,101 @@ form input[type="checkbox"] {
     cursor: pointer;
 }
 
+#chat-docs {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+#chat-docs-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+}
+
+#chat-docs-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    max-height: 6.5rem;
+    overflow-y: auto;
+}
+
+.chat-doc {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+}
+
+.chat-doc-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-doc-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-info-bg);
+    color: var(--color-info-text);
+    white-space: nowrap;
+}
+
+.chat-doc-completed .chat-doc-badge {
+    background: var(--color-success-bg);
+    color: var(--color-success-text);
+}
+
+.chat-doc-failed .chat-doc-badge {
+    background: var(--color-error-bg);
+    color: var(--color-error-text);
+}
+
+.chat-doc-pending .chat-doc-badge,
+.chat-doc-processing .chat-doc-badge {
+    background: var(--color-warning-bg);
+    color: var(--color-warning-text);
+}
+
+.chat-doc-remove {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    padding: 0.1rem;
+}
+
+.chat-doc-remove:hover {
+    color: var(--color-danger);
+}
+
+#chat-upload-form {
+    display: flex;
+    gap: 0.4rem;
+}
+
+#chat-upload-input {
+    flex: 1;
+    font-size: 0.78rem;
+    min-width: 0;
+}
+
+#chat-upload-status {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
 #chat-messages {
     flex: 1;
     overflow-y: auto;
