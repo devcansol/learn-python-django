@@ -126,8 +126,8 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Uploaded RAG documents (see todos/models.py:Document). Deliberately not
-# wired into config/urls.py — see todos/rag.py's module docstring for why
-# uploaded files are never served back over a public URL.
+# wired into config/urls.py — see todos/indexing.py's module docstring for
+# why uploaded files are never served back over a public URL.
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -155,9 +155,9 @@ OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
 OPENROUTER_MODEL = 'inclusionai/ling-3.0-flash:free'
 OPENROUTER_FALLBACK_MODELS = ['google/gemini-3.5-flash-lite']
 
-# Powers document-upload RAG (see todos/rag.py) — embeds document chunks at
-# upload time and the user's message at query time, via the same
-# OpenRouter account/key as the chat completions above.
+# Powers document-upload RAG (see todos/indexing.py and todos/retrieval.py)
+# — embeds document chunks at upload time and the user's message at query
+# time, via the same OpenRouter account/key as the chat completions above.
 OPENROUTER_EMBEDDING_MODEL = 'openai/text-embedding-3-small'
 
 REST_FRAMEWORK = {

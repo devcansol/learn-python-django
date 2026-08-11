@@ -9,8 +9,21 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from todos.ai import AIServiceError
 from todos.models import ChatMessage, Document, DocumentChunk, Project, Task
+from todos.openrouter import AIServiceError
+
+
+def _index_synchronously(document_id):
+    """Test double for todos.indexing.enqueue_indexing: run indexing on
+    the calling (test) thread instead of a background one, so assertions
+    right after the POST can see the final DB state. Deliberately does
+    NOT call connection.close() the way the real _run_indexing does —
+    that's only correct for a genuine background thread with its own
+    connection; here we're still on the test's own transactional
+    connection."""
+    from todos.indexing import index_document
+
+    index_document(Document.objects.get(pk=document_id))
 
 
 class ProjectApiTests(APITestCase):
@@ -98,8 +111,9 @@ class DocumentApiTests(APITestCase):
         response = self.client.get(reverse('document-list'))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @mock.patch('todos.rag.embed_texts')
-    def test_upload_txt_file_is_indexed_synchronously(self, mock_embed_texts):
+    @mock.patch('todos.api.views.enqueue_indexing', side_effect=_index_synchronously)
+    @mock.patch('todos.indexing.embed_texts')
+    def test_upload_runs_indexing_via_the_enqueue_seam(self, mock_embed_texts, mock_enqueue):
         # Short enough to become a single chunk (well under CHUNK_SIZE_CHARS).
         mock_embed_texts.return_value = [[0.1, 0.2]]
         self.client.force_authenticate(self.owner)
@@ -108,9 +122,13 @@ class DocumentApiTests(APITestCase):
         response = self.client.post(reverse('document-list'), {'file': upload}, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['status'], 'completed')
+        # Indexing is out-of-band now — the response is always 'pending',
+        # never the final outcome (see enqueue_indexing's docstring).
+        self.assertEqual(response.data['status'], 'pending')
+        mock_enqueue.assert_called_once_with(response.data['id'])
         document = Document.objects.get(pk=response.data['id'])
         self.assertEqual(document.owner, self.owner)
+        self.assertEqual(document.status, 'completed')
         self.assertEqual(document.chunk_count, 1)
         self.assertEqual(DocumentChunk.objects.filter(document=document).count(), 1)
 
@@ -131,16 +149,21 @@ class DocumentApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @mock.patch('todos.rag.embed_texts', side_effect=AIServiceError('The AI service returned an error while embedding text.'))
-    def test_upload_marks_document_failed_instead_of_500_on_embedding_error(self, mock_embed_texts):
+    @mock.patch('todos.api.views.enqueue_indexing', side_effect=_index_synchronously)
+    @mock.patch(
+        'todos.indexing.embed_texts',
+        side_effect=AIServiceError('The AI service returned an error while embedding text.'),
+    )
+    def test_upload_marks_document_failed_instead_of_500_on_embedding_error(self, mock_embed_texts, mock_enqueue):
         self.client.force_authenticate(self.owner)
         upload = SimpleUploadedFile('notes.txt', b'some content to embed')
 
         response = self.client.post(reverse('document-list'), {'file': upload}, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['status'], 'failed')
-        self.assertTrue(response.data['error_message'])
+        document = Document.objects.get(pk=response.data['id'])
+        self.assertEqual(document.status, 'failed')
+        self.assertTrue(document.error_message)
 
     def test_list_only_returns_own_documents(self):
         Document.objects.create(owner=self.owner, title='mine.txt', file_type='txt', status='completed')

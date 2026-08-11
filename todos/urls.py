@@ -6,6 +6,7 @@ app_name = 'todos'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('documents/', views.documents, name='documents'),
     path('projects/', views.ProjectListView.as_view(), name='project-list'),
     path('projects/new/', views.ProjectCreateView.as_view(), name='project-create'),
     path('projects/<int:pk>/', views.ProjectDetailView.as_view(), name='project-detail'),

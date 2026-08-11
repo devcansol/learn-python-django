@@ -36,6 +36,16 @@ def dashboard(request):
     })
 
 
+@login_required
+def documents(request):
+    """The document-management page: upload/list/delete for the RAG
+    knowledge base. Entirely API-driven (see static/js/documents.js
+    against the existing /api/documents/ endpoints) — this view just
+    renders the page shell, the same way the chat widget's old doc panel
+    was a pure client-side consumer of that same API."""
+    return render(request, 'todos/documents.html', {})
+
+
 class ProjectListView(OwnerQuerySetMixin, ListView):
     model = Project
     context_object_name = 'projects'

@@ -73,7 +73,7 @@ def document_upload_path(instance, filename):
 
 class Document(models.Model):
     """A file the user uploaded to their personal RAG knowledge base — see
-    todos/rag.py for how it gets chunked/embedded and todos/ai.py's
+    todos/indexing.py for how it gets chunked/embedded and todos/ai.py's
     stream_answer for how retrieved chunks get grounded into a chat reply.
 
     Forms a global per-user knowledge base (like ChatMessage), not scoped
@@ -111,7 +111,7 @@ class Document(models.Model):
 class DocumentChunk(models.Model):
     """One retrieval-sized slice of a Document's extracted text, plus the
     embedding vector used for cosine-similarity search — see
-    todos/rag.py:chunk_text / retrieve_relevant_chunks."""
+    todos/indexing.py:chunk_text and todos/retrieval.py:retrieve_relevant_chunks."""
 
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='chunks')
     chunk_index = models.PositiveIntegerField()

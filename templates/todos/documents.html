@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+    <h1>Documents</h1>
+    <p class="body-text">Upload files here to build the knowledge base the chat assistant draws on when answering your questions.</p>
+
+    <div id="doc-stats" class="stats-bar"></div>
+
+    <div id="doc-dropzone" class="dropzone" tabindex="0" role="button" aria-label="Add documents">
+        <div class="dropzone-icon">📄</div>
+        <p class="dropzone-title">Add documents</p>
+        <p class="dropzone-hint">Click here or drop files — .txt, .md, .pdf, max 5MB each</p>
+        <input id="doc-file-input" type="file" accept=".txt,.md,.pdf" multiple hidden>
+    </div>
+
+    <div id="doc-list-area">
+        <ul id="doc-list" class="doc-list"></ul>
+        <p id="doc-empty-state" class="empty-state" hidden>No documents yet — add one above to build your AI assistant's knowledge base.</p>
+    </div>
+
+    <div id="toast-container" aria-live="polite"></div>
+{% endblock %}
+{% block extra_js %}
+    <script src="{% static 'js/documents.js' %}"></script>
+{% endblock %}

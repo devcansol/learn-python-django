@@ -3,9 +3,11 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from todos.ai import AIServiceError, generate_description, stream_answer
+from todos.ai import generate_description, stream_answer
+from todos.indexing import enqueue_indexing
 from todos.models import ChatMessage, Document, Project, Task
-from todos.rag import build_retrieved_context, index_document, retrieve_relevant_chunks
+from todos.openrouter import AIServiceError
+from todos.retrieval import build_retrieved_context, retrieve_relevant_chunks
 
 from .serializers import (
     ChatMessageSerializer,
@@ -57,11 +59,14 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 class DocumentViewSet(viewsets.ModelViewSet):
     """Upload/list/delete the user's personal RAG knowledge-base documents.
-    Indexing (extract -> chunk -> embed -> store, see todos/rag.py)
-    happens synchronously inside perform_create — this app has no
-    background job queue, so the response already reflects the final
-    status. No PATCH/PUT: editing a document's file would mean
-    re-indexing, out of scope for v1 (delete and re-upload instead)."""
+    Indexing (extract -> chunk -> embed -> store, see todos/indexing.py)
+    runs on a background thread kicked off from perform_create — this app
+    has no Celery/task queue, so a plain daemon thread is the pragmatic
+    stand-in. The 201 response therefore always reports status='pending';
+    the documents page (see todos/views.py:documents) polls GET
+    /api/documents/{id}/ for the real outcome. No PATCH/PUT: editing a
+    document's file would mean re-indexing, out of scope for v1 (delete
+    and re-upload instead)."""
 
     serializer_class = DocumentSerializer
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
@@ -74,7 +79,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         file_type = uploaded_file.name.rsplit('.', 1)[-1].lower()
         title = serializer.validated_data.get('title') or uploaded_file.name
         document = serializer.save(owner=self.request.user, title=title, file_type=file_type, status='pending')
-        index_document(document)  # mutates `document` in place — status/counts are already correct by the time serializer.data is read for the response
+        enqueue_indexing(document.pk)
 
     def perform_destroy(self, instance):
         # Model .delete() does not remove the file on disk by default —

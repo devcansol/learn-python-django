@@ -7,15 +7,7 @@
             <span>Ask AI about your projects</span>
             <button id="chat-close" type="button" aria-label="Close">✕</button>
         </div>
-        <div id="chat-docs">
-            <div id="chat-docs-header">Your documents</div>
-            <ul id="chat-docs-list"></ul>
-            <form id="chat-upload-form">
-                <input id="chat-upload-input" type="file" accept=".txt,.md,.pdf">
-                <button id="chat-upload-btn" type="submit" class="btn btn-ghost btn-sm">Upload</button>
-            </form>
-            <div id="chat-upload-status"></div>
-        </div>
+        <a id="chat-docs-link" class="chat-docs-link" href="{% url 'todos:documents' %}">📁 Manage documents</a>
         <div id="chat-messages"></div>
         <form id="chat-form">
             <input id="chat-input" type="text" placeholder="Ask a question…" autocomplete="off">

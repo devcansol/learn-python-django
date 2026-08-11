@@ -14,14 +14,7 @@
   var form = document.getElementById('chat-form');
   var input = document.getElementById('chat-input');
 
-  var docsList = document.getElementById('chat-docs-list');
-  var uploadForm = document.getElementById('chat-upload-form');
-  var uploadInput = document.getElementById('chat-upload-input');
-  var uploadButton = document.getElementById('chat-upload-btn');
-  var uploadStatus = document.getElementById('chat-upload-status');
-
   var historyLoaded = false;
-  var docsLoaded = false;
 
   function csrfToken() {
     var tokenInput = widget.querySelector('input[name="csrfmiddlewaretoken"]');
@@ -71,129 +64,11 @@
     }
   }
 
-  function statusLabel(status) {
-    if (status === 'completed') return 'Ready';
-    if (status === 'failed') return 'Failed';
-    if (status === 'processing') return 'Indexing…';
-    return 'Pending';
-  }
-
-  function renderDocument(doc) {
-    var li = document.createElement('li');
-    li.className = 'chat-doc chat-doc-' + doc.status;
-    li.dataset.docId = doc.id;
-
-    var title = document.createElement('span');
-    title.className = 'chat-doc-title';
-    title.textContent = doc.title;
-    li.appendChild(title);
-
-    var badge = document.createElement('span');
-    badge.className = 'chat-doc-badge';
-    badge.textContent = statusLabel(doc.status);
-    li.appendChild(badge);
-
-    var removeButton = document.createElement('button');
-    removeButton.type = 'button';
-    removeButton.className = 'chat-doc-remove';
-    removeButton.setAttribute('aria-label', 'Delete document');
-    removeButton.textContent = '✕';
-    removeButton.addEventListener('click', function () {
-      deleteDocument(doc.id, li);
-    });
-    li.appendChild(removeButton);
-
-    docsList.appendChild(li);
-    return li;
-  }
-
-  async function loadDocuments() {
-    try {
-      var response = await fetch('/api/documents/');
-      if (!response.ok) {
-        return;
-      }
-      var data = await response.json();
-      data.forEach(renderDocument);
-    } catch (err) {
-      // Silently skip — the widget still works without the document list.
-    }
-  }
-
-  async function uploadDocument(file) {
-    var formData = new FormData();
-    formData.append('file', file);
-
-    uploadButton.disabled = true;
-    uploadInput.disabled = true;
-    uploadButton.textContent = 'Indexing…';
-    uploadStatus.textContent = '';
-
-    try {
-      // No Content-Type header here — fetch sets the multipart boundary
-      // itself for a FormData body; overriding it breaks the upload.
-      var response = await fetch('/api/documents/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': csrfToken() },
-        body: formData,
-      });
-      var data = await response.json().catch(function () { return {}; });
-
-      if (!response.ok) {
-        var fieldError = data.file && data.file[0];
-        uploadStatus.textContent = fieldError || 'Could not upload the document.';
-        return;
-      }
-
-      renderDocument(data);
-      uploadStatus.textContent = data.status === 'failed'
-        ? 'Indexing failed: ' + data.error_message
-        : 'Uploaded.';
-    } catch (err) {
-      uploadStatus.textContent = 'Could not reach the server. Please try again.';
-    } finally {
-      uploadButton.disabled = false;
-      uploadInput.disabled = false;
-      uploadButton.textContent = 'Upload';
-      uploadInput.value = '';
-    }
-  }
-
-  async function deleteDocument(id, li) {
-    if (!window.confirm('Delete this document?')) {
-      return;
-    }
-    try {
-      var response = await fetch('/api/documents/' + id + '/', {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': csrfToken() },
-      });
-      if (response.ok) {
-        li.remove();
-      }
-    } catch (err) {
-      // Leave the item in place — the user can retry the delete.
-    }
-  }
-
-  function handleUploadSubmit(event) {
-    event.preventDefault();
-    var file = uploadInput.files[0];
-    if (!file) {
-      return;
-    }
-    uploadDocument(file);
-  }
-
   function openPanel() {
     panel.hidden = false;
     if (!historyLoaded) {
       historyLoaded = true;
       loadHistory();
-    }
-    if (!docsLoaded) {
-      docsLoaded = true;
-      loadDocuments();
     }
     input.focus();
   }
@@ -284,5 +159,4 @@
   });
   closeButton.addEventListener('click', closePanel);
   form.addEventListener('submit', handleSubmit);
-  uploadForm.addEventListener('submit', handleUploadSubmit);
 })();

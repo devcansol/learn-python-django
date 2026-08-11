@@ -1,13 +1,6 @@
-"""Document ingestion + retrieval for the RAG-powered chat widget.
-
-Pipeline: extract text from an upload -> chunk it -> embed each chunk (via
-todos/ai.py) -> store DocumentChunk rows. At query time: embed the user's
-message and rank stored chunks by cosine similarity, brute-force, in pure
-Python — no numpy, no vector DB. That's a deliberate choice, not an
-oversight: at this app's scale (a personal knowledge base of maybe a few
-hundred chunks) a hand-rolled dot-product loop is both fast enough and, per
-this codebase's existing style (see todos/ai.py's hand-rolled SSE parsing),
-*is* the lesson rather than a workaround worth hiding behind a library.
+"""The RAG index pipeline: extract text from an upload -> chunk it -> embed
+each chunk (via todos/embeddings.py) -> store DocumentChunk rows. See
+todos/retrieval.py for the other half of the RAG pipeline (query time).
 
 Uploaded files are never served back over a URL — see DocumentSerializer's
 write-only `file` field and the absence of a `media/` route in
@@ -15,24 +8,23 @@ config/urls.py. The only things ever done with uploaded content are a
 UTF-8 decode/pypdf extraction and template/JSON auto-escaping — never
 execution, never unescaped HTML.
 """
-import math
 import re
+import threading
 
 import pypdf
+from django.db import connection
 
-from .ai import AIServiceError, embed_texts
-from .models import DocumentChunk
+from .embeddings import embed_texts
+from .models import Document, DocumentChunk
+from .openrouter import AIServiceError
 
 ALLOWED_EXTENSIONS = {'txt', 'md', 'pdf'}
-MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB — plenty for notes/a PDF chapter, small enough to keep synchronous indexing fast
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB — plenty for notes/a PDF chapter
 
 # ~400-token chunks at ~4 chars/token, ~12.5% overlap, per the RAG deck's
 # rules of thumb — expressed in characters since nothing here tokenizes.
 CHUNK_SIZE_CHARS = 1600
 CHUNK_OVERLAP_CHARS = 200
-
-TOP_K = 5
-MIN_SIMILARITY_SCORE = 0.1  # floor on the metric we already compute — not a re-ranking pass, just discarding obvious noise
 
 PARAGRAPH_SPLIT_RE = re.compile(r'\n\s*\n+')
 SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
@@ -98,19 +90,17 @@ def chunk_text(text, chunk_size=CHUNK_SIZE_CHARS, overlap=CHUNK_OVERLAP_CHARS):
 
 
 def index_document(document):
-    """Extract -> chunk -> embed -> persist, synchronously, inline in the
-    upload request (this app has no Celery/background workers — a known
-    v1 simplification; a task queue triggered on upload is the natural
-    production upgrade). Never raises: a bad file or embedding failure
-    fails the Document (status='failed', error_message set), not the HTTP
-    request."""
+    """Extract -> chunk -> embed -> persist. Never raises: a bad file or
+    embedding failure fails the Document (status='failed', error_message
+    set), not the caller. Called on a background thread via
+    enqueue_indexing() below, not inline in the upload request."""
     document.status = 'processing'
     document.save(update_fields=['status'])
 
     try:
         with document.file.open('rb') as fh:
             text = extract_text(fh, document.file_type)
-    except Exception as exc:  # noqa: BLE001 — extraction can raise many exception types on malformed input; any of them should fail the document, not the request.
+    except Exception as exc:  # noqa: BLE001 — extraction can raise many exception types on malformed input; any of them should fail the document, not the caller.
         document.status = 'failed'
         document.error_message = f'Could not read the file: {exc}'
         document.save(update_fields=['status', 'error_message'])
@@ -145,47 +135,27 @@ def index_document(document):
     return document
 
 
-def _cosine_similarity(vec_a, vec_b):
-    """Cosine similarity between two equal-length float vectors, by hand —
-    dot product over the product of magnitudes."""
-    dot = sum(a * b for a, b in zip(vec_a, vec_b))
-    mag_a = math.sqrt(sum(a * a for a in vec_a))
-    mag_b = math.sqrt(sum(b * b for b in vec_b))
-    if mag_a == 0 or mag_b == 0:
-        return 0.0
-    return dot / (mag_a * mag_b)
+def _run_indexing(document_id):
+    """Thread target for enqueue_indexing(): re-fetch the Document by pk —
+    a model instance/DB connection opened on the request thread must never
+    be reused on another thread — run the index pipeline, then close this
+    thread's own DB connection. Django only auto-closes connections at the
+    end of an HTTP request (via the request_finished signal); a bare
+    background thread has no such hook, so skipping this leaks one SQLite
+    connection per upload."""
+    document = Document.objects.get(pk=document_id)
+    try:
+        index_document(document)
+    finally:
+        connection.close()
 
 
-def retrieve_relevant_chunks(user, query, top_k=TOP_K):
-    """Rank every DocumentChunk owned by `user`, across all their
-    documents (a global personal knowledge base, not project-scoped), by
-    cosine similarity to `query`. Returns (chunk, score) pairs, highest
-    first, filtered to a minimum relevance floor."""
-    chunks = list(
-        DocumentChunk.objects.filter(document__owner=user, document__status='completed')
-        .select_related('document')
-    )
-    if not chunks:
-        return []  # no embed_texts call at all — zero extra latency/cost for users who never upload a document
-
-    query_vector = embed_texts([query])[0]
-    scored = [(chunk, _cosine_similarity(query_vector, chunk.embedding)) for chunk in chunks]
-    scored = [pair for pair in scored if pair[1] >= MIN_SIMILARITY_SCORE]
-    scored.sort(key=lambda pair: pair[1], reverse=True)
-    return scored[:top_k]
-
-
-def build_retrieved_context(scored_chunks):
-    """Render (chunk, score) pairs into the text that becomes
-    stream_answer's <retrieved_documents> block, tagged with source
-    document title + chunk index for provenance. Empty string (not a
-    filler sentence) when there's nothing relevant, so stream_answer omits
-    the block entirely."""
-    if not scored_chunks:
-        return ''
-    lines = []
-    for chunk, _score in scored_chunks:
-        lines.append(f'[Source: {chunk.document.title}, chunk {chunk.chunk_index}]')
-        lines.append(chunk.text)
-        lines.append('')
-    return '\n'.join(lines).strip()
+def enqueue_indexing(document_id):
+    """Kick off indexing on a daemon background thread instead of blocking
+    the upload request. Known v1 limitation, not a production pattern:
+    this app has no Celery/Redis, and a thread's in-flight work is lost if
+    the server process restarts mid-index (the Document is left stuck in
+    'processing' — acceptable for a learning app; a durable task queue is
+    the natural production upgrade). Tests monkeypatch this function to
+    run indexing inline/synchronously — see todos/api/tests.py."""
+    threading.Thread(target=_run_indexing, args=(document_id,), daemon=True).start()

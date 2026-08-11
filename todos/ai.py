@@ -1,36 +1,25 @@
-"""OpenRouter client backing the "Generate with AI" description helper, the
-chat widget, and (via embed_texts) the RAG document pipeline in
-todos/rag.py.
+"""OpenRouter chat-completions client backing the "Generate with AI"
+description helper and the chat widget. Embeddings live in
+todos/embeddings.py; both modules share transport/retry logic from
+todos/openrouter.py.
 
 generate_description() is fully-buffered (no streaming); stream_answer()
 yields the reply incrementally. Both share _post_with_retries(), which
 tries settings.OPENROUTER_MODEL first, then falls through
 settings.OPENROUTER_FALLBACK_MODELS in order on a 429, retrying a given
-model with backoff on a 5xx. embed_texts() hits a different OpenRouter
-endpoint but reuses the same underlying retry/backoff logic via
-_post_json_with_retries().
+model with backoff on a 5xx.
 """
 import json
-import time
 
 import requests
 from django.conf import settings
 
-OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-OPENROUTER_EMBEDDINGS_URL = 'https://openrouter.ai/api/v1/embeddings'
-REQUEST_TIMEOUT = 20
-MAX_ATTEMPTS = 3               # per model, on a 5xx
-BACKOFF_SECONDS = 0.5          # doubles each retry: 0.5s, 1s
-RETRYABLE_STATUS = frozenset({500, 502, 503, 504})
-# Falls through to the next model in OPENROUTER_FALLBACK_MODELS on either:
-# rate-limited (429), or the model slug itself is gone/deprecated (404) —
-# OpenRouter's free-tier catalog rotates models out from under us.
-FALLBACK_TRIGGER_STATUS = frozenset({404, 429})
-
-
-class AIServiceError(Exception):
-    """Raised for any failure generating a description or chat reply;
-    message is safe to show directly to the user."""
+from .openrouter import (
+    OPENROUTER_URL,
+    AIServiceError,
+    FALLBACK_TRIGGER_STATUS,
+    _post_json_with_retries,
+)
 
 
 def generate_description(subject, hint='', parent_context=''):
@@ -64,8 +53,8 @@ def stream_answer(message, history, context, retrieved_context=''):
     ChatMessage rows (oldest first, already capped by the caller);
     `context` is the pre-built text summary of the user's current
     project/task data; `retrieved_context` is the pre-built text of the
-    top-K document excerpts from todos/rag.py:build_retrieved_context, or
-    '' if the user has no uploaded documents (or none were relevant) —
+    top-K document excerpts from todos/retrieval.py:build_retrieved_context,
+    or '' if the user has no uploaded documents (or none were relevant) —
     in which case the <retrieved_documents> block is omitted entirely, so
     existing behavior for users with no documents is unchanged."""
     system_parts = [
@@ -172,34 +161,6 @@ def _stream_chat_completion(messages):
     return chunks()
 
 
-def embed_texts(texts):
-    """Embed a batch of texts via OpenRouter's OpenAI-compatible
-    /embeddings endpoint. Returns a list of float-vectors in the same
-    order as `texts`. Used both to index a document's chunks and to embed
-    an incoming chat message at query time (see todos/rag.py)."""
-    if not settings.OPENROUTER_API_KEY:
-        raise AIServiceError('AI generation is not configured on this server.')
-    if not texts:
-        return []
-
-    response = _post_json_with_retries(
-        OPENROUTER_EMBEDDINGS_URL,
-        {'model': settings.OPENROUTER_EMBEDDING_MODEL, 'input': texts, 'encoding_format': 'float'},
-    )
-    if response.status_code == 429:
-        raise AIServiceError('The AI models are rate-limited right now. Please try again shortly.')
-    if not response.ok:
-        raise AIServiceError('The AI service returned an error while embedding text.')
-
-    try:
-        data = response.json()['data']
-        # The API doesn't guarantee `data` preserves input order — sort by
-        # the `index` field it returns per embedding.
-        return [item['embedding'] for item in sorted(data, key=lambda item: item['index'])]
-    except (ValueError, KeyError, TypeError):
-        raise AIServiceError('The AI service returned an unexpected response.')
-
-
 def _post_with_retries(model, messages, stream):
     """POST one chat-completions model attempt. Thin wrapper around
     _post_json_with_retries for the two chat-completion callers above."""
@@ -208,36 +169,3 @@ def _post_with_retries(model, messages, stream):
         {'model': model, 'messages': messages, 'stream': stream},
         stream=stream,
     )
-
-
-def _post_json_with_retries(url, payload, stream=False):
-    """POST one payload to `url`, retrying up to MAX_ATTEMPTS times with
-    exponential backoff on a 5xx. Returns the requests.Response as-is —
-    the caller decides what a 429 or other non-ok status means. Shared by
-    the chat-completions and embeddings endpoints."""
-    response = None
-    for attempt in range(MAX_ATTEMPTS):
-        try:
-            response = requests.post(
-                url,
-                headers={
-                    'Authorization': f'Bearer {settings.OPENROUTER_API_KEY}',
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'http://localhost:8000',
-                    'X-Title': 'Todo Learning App',
-                },
-                json=payload,
-                timeout=REQUEST_TIMEOUT,
-                stream=stream,
-            )
-        except requests.exceptions.Timeout:
-            raise AIServiceError('The AI service timed out. Please try again.')
-        except requests.exceptions.RequestException:
-            raise AIServiceError('Could not reach the AI service. Please try again.')
-
-        if response.status_code in RETRYABLE_STATUS and attempt < MAX_ATTEMPTS - 1:
-            response.close()
-            time.sleep(BACKOFF_SECONDS * (2 ** attempt))
-            continue
-        return response
-    return response

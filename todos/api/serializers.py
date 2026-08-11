@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from todos.models import ChatMessage, Document, Project, Task
-from todos.rag import ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE
+from todos.indexing import ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -53,9 +53,9 @@ class ChatSendSerializer(serializers.Serializer):
 
 
 class DocumentSerializer(serializers.ModelSerializer):
-    """Upload/list a Document for the chat widget's RAG knowledge base —
-    see todos/rag.py:index_document. `file` is write-only: the uploaded
-    file is never echoed back or exposed by URL (see todos/rag.py's
+    """Upload/list a Document for the RAG knowledge base — see
+    todos/indexing.py:index_document. `file` is write-only: the uploaded
+    file is never echoed back or exposed by URL (see todos/indexing.py's
     module docstring for why)."""
 
     file = serializers.FileField(write_only=True)
